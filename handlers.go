@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -29,6 +30,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "Failed to retrieve file", http.StatusBadRequest)
     return
 	}
+	
+	fmt.Printf("File Size: %+v\n", header.Size)
 
 	defer file.Close()
 	file.Seek(0,0) // go to start of file
@@ -42,17 +45,22 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	text, err := transcribeAudio(file, header.Filename, apiKey)
 
+	fmt.Printf("OpenAI Response: %s\n", text)
+
 	if err != nil {
 		fmt.Printf("Error processing audio: %v\n", err)
 		http.Error(w, "Failed to transcribe", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Printf("OpenAI Response: %s\n", text)
+	callAnalysis, err := analyzeTranscript(text, apiKey)
 
-	fmt.Printf("Uploaded FIle: %+v\n", header.Filename)
-	fmt.Printf("File Size: %+v\n", header.Size)
+	if err != nil {
+		fmt.Printf("Error analyzing transcription: %v\n", err)
+		http.Error(w, "Failed to analyze transcrition", http.StatusInternalServerError)
+		return
+	}
 
-	fmt.Fprintf(w, "Successfully Uploaded File\n")
+	json.NewEncoder(w).Encode(callAnalysis)
 
 }
