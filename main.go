@@ -12,6 +12,7 @@ import (
 
 
 func main() {
+	
 	err := godotenv.Load()
 	apiKey := os.Getenv("OPENAI_API_KEY")
 
@@ -21,6 +22,18 @@ func main() {
 
 	if apiKey == "" {
 		log.Fatal("Error: OPEN_AI_API_KEY is missing")
+	}
+
+	connStr := os.Getenv("DATABASE_URL")
+
+	if connStr == "" {
+		log.Fatal("Error: DATABASE_URL is missing")
+	}
+
+	db, err = InitDB(connStr)
+
+	if err != nil {
+		log.Fatalf("Failed making connection to database %v", err)
 	}
 
 	r := chi.NewRouter()

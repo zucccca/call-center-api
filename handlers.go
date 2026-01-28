@@ -53,7 +53,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	
 	callAnalysis, err := analyzeTranscript(text, apiKey)
+
+	fmt.Printf("HIT %v", callAnalysis)
 
 	if err != nil {
 		fmt.Printf("Error analyzing transcription: %v\n", err)
@@ -61,6 +64,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(callAnalysis)
+	callAnalysis.Filename = header.Filename
 
+	callId, err := SaveCall(callAnalysis)
+
+	if err != nil {
+		http.Error(w, "Failed to save user", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(UploadResponse{ID: callId})
 }

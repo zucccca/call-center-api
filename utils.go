@@ -17,10 +17,15 @@ type CallCompliance struct {
   FlagCount int `json:"flag_count"`
   IsPushy bool `json:"is_pushy"`
 	Score int `json:"score"`
+	Filename string
 }
 
 type OpenAIResponse struct {
     Text string `json:"text"`
+}
+
+type UploadResponse struct {
+    ID int `json:"id"`
 }
 
 var systemPrompt = `
@@ -76,7 +81,6 @@ func analyzeTranscript(transcript string, apiKey string) (*CallCompliance, error
 	if err != nil {
 		return nil, err
 	}
-
 	complianceData.Transcript = transcript
 	return &complianceData, nil
 }
