@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	"github.com/sashabaranov/go-openai"
 )
@@ -18,6 +19,22 @@ type CallCompliance struct {
   IsPushy bool `json:"is_pushy"`
 	Score int `json:"score"`
 	Filename string
+}
+
+type CallSummary struct {
+    ID        int       `json:"id"`
+    Filename  string    `json:"filename"`
+    Score     int       `json:"score"`
+    FlagCount int       `json:"flag_count"`
+    IsPushy   bool      `json:"is_pushy"`
+    CreatedAt time.Time `json:"created_at"`
+}
+
+type CallsListResponse struct {
+    Calls  []CallSummary `json:"calls"`
+    Total  int           `json:"total"`
+    Limit  int           `json:"limit"`
+    Offset int           `json:"offset"`
 }
 
 type OpenAIResponse struct {
