@@ -40,6 +40,8 @@ func main() {
 	port := ":4000"
 	
 	r.HandleFunc("/upload", uploadHandler)
+	r.HandleFunc("/calls", getCallsHandler)
+	
 	log.Printf("Server listening on port %s", port)
 	
 	listenErr := http.ListenAndServe(port, r)

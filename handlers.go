@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 )
@@ -74,4 +75,52 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(UploadResponse{ID: callId})
+}
+
+func getCallsHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != "GET" {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    // Parse query params (default: limit=20, offset=0)
+    limitStr := r.URL.Query().Get("limit")
+    offsetStr := r.URL.Query().Get("offset")
+
+    limit := 20  // default
+    offset := 0  // default
+
+    if limitStr != "" {
+        fmt.Sscanf(limitStr, "%d", &limit)
+    }
+    if offsetStr != "" {
+        fmt.Sscanf(offsetStr, "%d", &offset)
+    }
+
+    // Validate limits
+    if limit > 100 {
+        limit = 100
+    }
+    if limit < 1 {
+        limit = 20
+    }
+
+    // Get calls from DB
+    calls, total, err := GetCalls(limit, offset)
+    if err != nil {
+        log.Printf("Error fetching calls: %v", err)
+        http.Error(w, "Failed to fetch calls", http.StatusInternalServerError)
+        return
+    }
+
+    // Build response
+    response := CallsListResponse{
+        Calls:  calls,
+        Total:  total,
+        Limit:  limit,
+        Offset: offset,
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
 }
