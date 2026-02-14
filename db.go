@@ -51,3 +51,46 @@ func SaveCall(callData *CallCompliance) (int, error) {
 
 	return callId, nil
 }
+
+func GetCalls(limit, offset int) ([]CallSummary, int, error) {
+  
+    var total int
+    err := db.QueryRow("SELECT COUNT(*) FROM calls").Scan(&total)
+    if err != nil {
+        log.Printf("Failed counting calls, err %v", err)
+        return nil, 0, err
+    }
+
+    rows, err := db.Query(`
+        SELECT id, filename, score, flag_count, is_pushy, created_at 
+        FROM calls 
+        ORDER BY created_at DESC 
+        LIMIT $1 OFFSET $2
+    `, limit, offset)
+    
+    if err != nil {
+        log.Printf("Failed fetching calls from db, err %v", err)
+        return nil, 0, err
+    }
+    defer rows.Close()
+
+    calls := []CallSummary{}
+    for rows.Next() {
+        var call CallSummary
+        err := rows.Scan(
+            &call.ID,
+            &call.Filename,
+            &call.Score,
+            &call.FlagCount,
+            &call.IsPushy,
+            &call.CreatedAt,
+        )
+        if err != nil {
+            log.Printf("Failed scanning row, err %v", err)
+            return nil, 0, err
+        }
+        calls = append(calls, call)
+    }
+
+    return calls, total, nil
+}
