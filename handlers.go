@@ -1,11 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
@@ -123,4 +127,29 @@ func getCallsHandler(w http.ResponseWriter, r *http.Request) {
 
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(response)
+}
+
+func getCallByIdHandler(w http.ResponseWriter, r *http.Request) {
+    idStr := chi.URLParam(r, "id")
+    
+    id, err := strconv.Atoi(idStr)
+		if err != nil {
+    	http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+		
+		call, err := GetCall(id)
+		if err == sql.ErrNoRows {
+    	http.Error(w, "Call not found", http.StatusNotFound) 
+			return
+		}
+
+		if err != nil {  // ← Any OTHER error
+    	log.Printf("Error fetching call: %v", err)
+    	http.Error(w, "Internal server error", http.StatusInternalServerError)
+    	return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(call)
 }
