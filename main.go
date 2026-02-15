@@ -41,6 +41,7 @@ func main() {
 	
 	r.HandleFunc("/upload", uploadHandler)
 	r.HandleFunc("/calls", getCallsHandler)
+	r.HandleFunc("/calls/{id}", getCallByIdHandler)
 	
 	log.Printf("Server listening on port %s", port)
 	
