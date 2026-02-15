@@ -94,3 +94,29 @@ func GetCalls(limit, offset int) ([]CallSummary, int, error) {
 
     return calls, total, nil
 }
+
+func GetCall(id int) (*CallDetail, error) {
+	var call CallDetail
+	var flagsJSON []byte 
+  err := db.QueryRow("SELECT id, filename, transcript, flags, flag_count, is_pushy, score, created_at FROM calls WHERE ID = $1", id).Scan(&call.ID,
+            &call.Filename,
+						&call.Transcript,
+						&flagsJSON,
+            &call.FlagCount,
+            &call.IsPushy,
+            &call.Score,
+            &call.CreatedAt)
+  
+	if err != nil {
+		log.Printf("Failed fetching call with id %d, err %v", id, err)
+    return nil, err
+  }
+
+	err = json.Unmarshal(flagsJSON, &call.Flags)
+	if err != nil {
+    log.Printf("Failed unmarshaling flags, err %v", err)
+    return nil, err
+	}
+
+	return &call, nil
+}
