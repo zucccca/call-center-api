@@ -13,47 +13,47 @@ import (
 )
 
 type CallCompliance struct {
-	Transcript string `json:"transcript"`
-	Flags []string `json:"flags"`
-  FlagCount int `json:"flag_count"`
-  IsPushy bool `json:"is_pushy"`
-	Score int `json:"score"`
-	Filename string
+	Transcript string   `json:"transcript"`
+	Flags      []string `json:"flags"`
+	FlagCount  int      `json:"flag_count"`
+	IsPushy    bool     `json:"is_pushy"`
+	Score      int      `json:"score"`
+	Filename   string
 }
 
 type CallSummary struct {
-    ID        int       `json:"id"`
-    Filename  string    `json:"filename"`
-    Score     int       `json:"score"`
-    FlagCount int       `json:"flag_count"`
-    IsPushy   bool      `json:"is_pushy"`
-    CreatedAt time.Time `json:"created_at"`
-}
-
-type CallsListResponse struct {
-    Calls  []CallSummary `json:"calls"`
-    Total  int           `json:"total"`
-    Limit  int           `json:"limit"`
-    Offset int           `json:"offset"`
-}
-
-type CallDetail struct {
-	ID int `json:"id"`
-	Filename string `json:"filename"`
-	Transcript string `json:"transcript"`
-	Flags []string `json:"flags"`
-  FlagCount int `json:"flag_count"`
-  IsPushy bool `json:"is_pushy"`
-	Score int `json:"score"`
+	ID        int       `json:"id"`
+	Filename  string    `json:"filename"`
+	Score     int       `json:"score"`
+	FlagCount int       `json:"flag_count"`
+	IsPushy   bool      `json:"is_pushy"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type CallsListResponse struct {
+	Calls  []CallSummary `json:"calls"`
+	Total  int           `json:"total"`
+	Limit  int           `json:"limit"`
+	Offset int           `json:"offset"`
+}
+
+type CallDetail struct {
+	ID         int       `json:"id"`
+	Filename   string    `json:"filename"`
+	Transcript string    `json:"transcript"`
+	Flags      []string  `json:"flags"`
+	FlagCount  int       `json:"flag_count"`
+	IsPushy    bool      `json:"is_pushy"`
+	Score      int       `json:"score"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 type OpenAIResponse struct {
-    Text string `json:"text"`
+	Text string `json:"text"`
 }
 
 type UploadResponse struct {
-    ID int `json:"id"`
+	ID int `json:"id"`
 }
 
 var systemPrompt = `
@@ -74,7 +74,6 @@ var systemPrompt = `
 		"score": 70
 	}
 	`
-
 
 func analyzeTranscript(transcript string, apiKey string) (*CallCompliance, error) {
 	client := openai.NewClient(apiKey)
@@ -113,7 +112,6 @@ func analyzeTranscript(transcript string, apiKey string) (*CallCompliance, error
 	return &complianceData, nil
 }
 
-
 func transcribeAudio(file multipart.File, filename string, apiKey string) (string, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -130,7 +128,7 @@ func transcribeAudio(file multipart.File, filename string, apiKey string) (strin
 	}
 
 	writer.WriteField("model", "whisper-1")
-	
+
 	err = writer.Close()
 
 	if err != nil {
@@ -140,11 +138,11 @@ func transcribeAudio(file multipart.File, filename string, apiKey string) (strin
 	req, err := http.NewRequest("POST", "https://api.openai.com/v1/audio/transcriptions", body)
 
 	if err != nil {
-		return  "", err
+		return "", err
 	}
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set("Authorization", "Bearer " + apiKey)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -161,7 +159,7 @@ func transcribeAudio(file multipart.File, filename string, apiKey string) (strin
 
 	if err != nil {
 		return "", err
-  }
+	}
 
 	return responseObj.Text, nil
 }

@@ -10,10 +10,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
-
 func main() {
-	
+
 	err := godotenv.Load()
 	apiKey := os.Getenv("OPENAI_API_KEY")
 
@@ -39,21 +37,21 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
-  		AllowedOrigins:   []string{"http://localhost:5173", "https://*"},  // Allow dev + production
-      AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-      AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
-      AllowCredentials: false,
-      MaxAge:           300,
-  }))
-	
+		AllowedOrigins:   []string{"http://localhost:5173", "https://*"}, // Allow dev + production
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
+
 	port := ":4000"
-	
+
 	r.HandleFunc("/upload", uploadHandler)
 	r.HandleFunc("/calls", getCallsHandler)
 	r.HandleFunc("/calls/{id}", getCallByIdHandler)
-	
+
 	log.Printf("Server listening on port %s", port)
-	
+
 	listenErr := http.ListenAndServe(port, r)
 
 	if listenErr != nil {
