@@ -13,21 +13,25 @@ import (
 )
 
 type CallCompliance struct {
-	Transcript string   `json:"transcript"`
-	Flags      []string `json:"flags"`
-	FlagCount  int      `json:"flag_count"`
-	IsPushy    bool     `json:"is_pushy"`
-	Score      int      `json:"score"`
-	Filename   string
+	Transcript    string   `json:"transcript"`
+	Flags         []string `json:"flags"`
+	FlagCount     int      `json:"flag_count"`
+	IsPushy       bool     `json:"is_pushy"`
+	Score         int      `json:"score"`
+	Filename      string
+	AgentName     string `json:"agent_name"`
+	TrackdriveUrl string `json:"trackdrive_url"`
 }
 
 type CallSummary struct {
-	ID        int       `json:"id"`
-	Filename  string    `json:"filename"`
-	Score     int       `json:"score"`
-	FlagCount int       `json:"flag_count"`
-	IsPushy   bool      `json:"is_pushy"`
-	CreatedAt time.Time `json:"created_at"`
+	ID            int       `json:"id"`
+	Filename      string    `json:"filename"`
+	Score         int       `json:"score"`
+	FlagCount     int       `json:"flag_count"`
+	IsPushy       bool      `json:"is_pushy"`
+	CreatedAt     time.Time `json:"created_at"`
+	AgentName     string    `json:"agent_name"`
+	TrackdriveUrl string    `json:"trackdrive_url"`
 }
 
 type CallsListResponse struct {
@@ -38,14 +42,16 @@ type CallsListResponse struct {
 }
 
 type CallDetail struct {
-	ID         int       `json:"id"`
-	Filename   string    `json:"filename"`
-	Transcript string    `json:"transcript"`
-	Flags      []string  `json:"flags"`
-	FlagCount  int       `json:"flag_count"`
-	IsPushy    bool      `json:"is_pushy"`
-	Score      int       `json:"score"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID            int       `json:"id"`
+	Filename      string    `json:"filename"`
+	Transcript    string    `json:"transcript"`
+	Flags         []string  `json:"flags"`
+	FlagCount     int       `json:"flag_count"`
+	IsPushy       bool      `json:"is_pushy"`
+	Score         int       `json:"score"`
+	CreatedAt     time.Time `json:"created_at"`
+	AgentName     string    `json:"agent_name"`
+	TrackdriveUrl string    `json:"trackdrive_url"`
 }
 
 type OpenAIResponse struct {
