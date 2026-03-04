@@ -20,63 +20,82 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // limit request to 10mb
-	err := r.ParseMultipartForm(10 << 20)
-
-	if err != nil {
-		http.Error(w, "File too big", http.StatusBadRequest)
-		return
-	}
-
-	file, header, err := r.FormFile("audio")
-
-	if err != nil {
-		fmt.Printf("Error retrieving file: %v\n", err)
-		http.Error(w, "Failed to retrieve file", http.StatusBadRequest)
-		return
-	}
-
-	fmt.Printf("File Size: %+v\n", header.Size)
-
-	defer file.Close()
-	file.Seek(0, 0) // go to start of file
-
 	apiKey := os.Getenv("OPENAI_API_KEY")
-
 	if apiKey == "" {
 		http.Error(w, "Server configuration error", http.StatusInternalServerError)
 		return
 	}
 
-	text, err := transcribeAudio(file, header.Filename, apiKey)
-
-	fmt.Printf("OpenAI Response: %s\n", text)
-
+	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
+	err := r.ParseMultipartForm(50 << 20)
 	if err != nil {
-		fmt.Printf("Error processing audio: %v\n", err)
-		http.Error(w, "Failed to transcribe", http.StatusInternalServerError)
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
+
+	agentName := r.FormValue("agent_name")
+	tdUrl := r.FormValue("td_url")
+
+	var text string
+	var filename string
+
+	// If audio is a URL (TrackDrive webhook flow)
+	audioUrl := r.FormValue("audio")
+	if audioUrl != "" {
+		fmt.Printf("Received audio URL: %s\n", audioUrl)
+		tdAuthHeader := os.Getenv("TD_AUTH_HEADER")
+		if tdAuthHeader == "" {
+			http.Error(w, "Server configuration error: missing TD_AUTH_HEADER", http.StatusInternalServerError)
+			return
+		}
+		text, err = downloadAndTranscribeAudio(audioUrl, apiKey, tdAuthHeader)
+		if err != nil {
+			fmt.Printf("Error downloading/transcribing audio: %v\n", err)
+			http.Error(w, "Failed to process audio URL", http.StatusInternalServerError)
+			return
+		}
+		filename = audioUrl
+	} else {
+		// Fall back to direct file upload (batch script)
+		file, header, fileErr := r.FormFile("audio")
+		if fileErr != nil {
+			fmt.Printf("Error retrieving file: %v\n", fileErr)
+			http.Error(w, "Failed to retrieve audio", http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+		file.Seek(0, 0)
+
+		fmt.Printf("File Size: %+v\n", header.Size)
+		text, err = transcribeAudio(file, header.Filename, apiKey)
+		if err != nil {
+			fmt.Printf("Error transcribing audio: %v\n", err)
+			http.Error(w, "Failed to transcribe", http.StatusInternalServerError)
+			return
+		}
+		filename = header.Filename
+	}
+
+	fmt.Printf("Transcript: %s\n", text)
 
 	callAnalysis, err := analyzeTranscript(text, apiKey)
-
-	fmt.Printf("HIT %v", callAnalysis)
-
 	if err != nil {
 		fmt.Printf("Error analyzing transcription: %v\n", err)
-		http.Error(w, "Failed to analyze transcrition", http.StatusInternalServerError)
+		http.Error(w, "Failed to analyze transcription", http.StatusInternalServerError)
 		return
 	}
 
-	callAnalysis.Filename = header.Filename
+	callAnalysis.Filename = filename
+	callAnalysis.AgentName = agentName
+	callAnalysis.TrackdriveUrl = tdUrl
 
 	callId, err := SaveCall(callAnalysis)
-
 	if err != nil {
-		http.Error(w, "Failed to save user", http.StatusInternalServerError)
+		http.Error(w, "Failed to save call", http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{ID: callId})
 }
 

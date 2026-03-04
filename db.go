@@ -41,8 +41,18 @@ func SaveCall(callData *CallCompliance) (int, error) {
 		return -1, err
 	}
 
-	err = db.QueryRow(`INSERT INTO calls(filename, transcript, flags, flag_count, is_pushy, score) VALUES($1, $2, $3, $4, $5, $6) RETURNING id`,
-		callData.Filename, callData.Transcript, flags, callData.FlagCount, callData.IsPushy, callData.Score).Scan(&callId)
+	err = db.QueryRow(
+		`INSERT INTO calls(filename, transcript, flags, flag_count, is_pushy, score, agent_name, trackdrive_url) 
+		 VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		callData.Filename,
+		callData.Transcript,
+		flags,
+		callData.FlagCount,
+		callData.IsPushy,
+		callData.Score,
+		callData.AgentName,
+		callData.TrackdriveUrl,
+	).Scan(&callId)
 
 	if err != nil {
 		log.Printf("Failed saving call data associated with filename -> %s, err %v", callData.Filename, err)
@@ -62,11 +72,11 @@ func GetCalls(limit, offset int) ([]CallSummary, int, error) {
 	}
 
 	rows, err := db.Query(`
-        SELECT id, filename, score, flag_count, is_pushy, created_at 
-        FROM calls 
-        ORDER BY created_at DESC 
-        LIMIT $1 OFFSET $2
-    `, limit, offset)
+		SELECT id, filename, score, flag_count, is_pushy, created_at, agent_name, trackdrive_url
+		FROM calls 
+		ORDER BY created_at DESC 
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
 
 	if err != nil {
 		log.Printf("Failed fetching calls from db, err %v", err)
@@ -84,6 +94,8 @@ func GetCalls(limit, offset int) ([]CallSummary, int, error) {
 			&call.FlagCount,
 			&call.IsPushy,
 			&call.CreatedAt,
+			&call.AgentName,
+			&call.TrackdriveUrl,
 		)
 		if err != nil {
 			log.Printf("Failed scanning row, err %v", err)
@@ -98,14 +110,21 @@ func GetCalls(limit, offset int) ([]CallSummary, int, error) {
 func GetCall(id int) (*CallDetail, error) {
 	var call CallDetail
 	var flagsJSON []byte
-	err := db.QueryRow("SELECT id, filename, transcript, flags, flag_count, is_pushy, score, created_at FROM calls WHERE ID = $1", id).Scan(&call.ID,
+	err := db.QueryRow(
+		`SELECT id, filename, transcript, flags, flag_count, is_pushy, score, created_at, agent_name, trackdrive_url 
+		 FROM calls WHERE id = $1`, id,
+	).Scan(
+		&call.ID,
 		&call.Filename,
 		&call.Transcript,
 		&flagsJSON,
 		&call.FlagCount,
 		&call.IsPushy,
 		&call.Score,
-		&call.CreatedAt)
+		&call.CreatedAt,
+		&call.AgentName,
+		&call.TrackdriveUrl,
+	)
 
 	if err != nil {
 		log.Printf("Failed fetching call with id %d, err %v", id, err)

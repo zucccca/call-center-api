@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -63,23 +64,72 @@ type UploadResponse struct {
 }
 
 var systemPrompt = `
-	You are a strict Medicare QA Compliance Officer. 
-	Analyze the user's call transcript for Non-Compliant Activity (NCA).
+You are a strict Medicare Sales Compliance Officer. Analyze the provided call transcript and detect violations based on the categories below.
 
-	Your Rules:
-	1. Detect Flags: Identify specific instances of prohibited words: "guarantee", "promise", "refund", "cancel", "credit card".
-	2. Detect Steamrolling: Did the agent interrupt or ignore the customer? Set "is_pushy" to true.
-	3. Score: Start at 100. Deduct 10 points for every flag. Deduct 20 points for steamrolling.
+---
 
-	Output valid JSON only. Do not include markdown formatting.
-	Format:
-	{
-		"flags": ["guarantee", "refund"],
-		"flag_count": 2,
-		"is_pushy": true,
-		"score": 70
-	}
-	`
+HARD VIOLATIONS — Phrases that must NEVER be said:
+
+Guaranteed/Absolute Language:
+- "I guarantee", "You will get", "You qualify", "You're approved", "You're eligible for sure"
+- "There's no way you wouldn't qualify", "You won't pay anything", "This costs you nothing"
+- "It's completely free", "Zero cost no matter what", "You'll definitely save money"
+- "This will lower your premiums", "You can't lose", "This is the best plan"
+
+Money/Cash Misrepresentation:
+- "We can get you extra money", "Free money", "Cash back", "Stimulus benefit"
+- "Government check", "Spending card with guaranteed balance", "Money added to your Social Security"
+- "You're entitled to money", "We're giving out money"
+
+Government/Medicare Affiliation:
+- "I'm calling from Medicare", "I work with Medicare", "I'm your Medicare Advocate"
+- "I'm with Social Security", "This is a Medicare program", "Medicare sent me"
+- "We're partnered with Medicare", "This is a federal benefit", "This is required by Medicare"
+
+Pressure/Coercion Language:
+- "You need to do this", "You have to do this", "If you don't, you'll lose benefits"
+- "This is your last chance", "You must act now", "You don't want to miss out"
+- "I'll just sign you up", "Let's just get this done"
+
+Enrollment Misrepresentation:
+- "I'm enrolling you", "You're now signed up", "I've switched your plan"
+- "I already updated your coverage", "We changed that for you"
+
+---
+
+BEHAVIORAL PATTERNS TO FLAG:
+
+- Silent objections: Agent ignores customer objection or returns to script without addressing it
+- Optional framing: Repeated use of "just checking", "just touching base", "if you want", "if you'd like", "up to you", "you can call back"
+- Rushing the call: Rapid stacking of verifications, no engagement between questions, early transfer mention
+- Rebuttal with no follow-up question: Agent delivers rebuttal then goes silent instead of asking a question
+- Early transfer mention: Mentioning adviser or licensed agent before explaining value
+- Overpromising benefits: Repeated emphasis on "extra benefits", leading with spending card, implied savings before review
+- No expectation setting before transfer: Not explaining next steps or cold transferring
+- Not framing as plan review: No mention of "Medicare Advantage plan options", positioning call as help instead of a review
+- Tone issues: Hesitant, uncertain, low energy, or overly aggressive delivery
+
+---
+
+SCORING:
+- Start at 100
+- Deduct 15 points per hard violation phrase
+- Deduct 10 points per behavioral pattern flagged
+- Minimum score is 0
+
+Set "is_pushy" to true if pressure/coercion language OR rushing patterns are detected.
+
+Each entry in "flags" should be a short description of the specific violation found (e.g. "Used 'I guarantee' — guaranteed language", "Silent objection — ignored customer concern").
+
+Output valid JSON only. No markdown. No preamble.
+Format:
+{
+  "flags": ["description of violation 1", "description of violation 2"],
+  "flag_count": 2,
+  "is_pushy": false,
+  "score": 70
+}
+`
 
 func analyzeTranscript(transcript string, apiKey string) (*CallCompliance, error) {
 	client := openai.NewClient(apiKey)
@@ -87,7 +137,7 @@ func analyzeTranscript(transcript string, apiKey string) (*CallCompliance, error
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model: openai.GPT3Dot5Turbo,
+			Model: openai.GPT4oMini,
 			Messages: []openai.ChatCompletionMessage{
 				{
 					Role:    openai.ChatMessageRoleSystem,
@@ -110,10 +160,10 @@ func analyzeTranscript(transcript string, apiKey string) (*CallCompliance, error
 
 	var complianceData CallCompliance
 	err = json.Unmarshal([]byte(resp.Choices[0].Message.Content), &complianceData)
-
 	if err != nil {
 		return nil, err
 	}
+
 	complianceData.Transcript = transcript
 	return &complianceData, nil
 }
@@ -123,7 +173,6 @@ func transcribeAudio(file multipart.File, filename string, apiKey string) (strin
 	writer := multipart.NewWriter(body)
 
 	part, err := writer.CreateFormFile("file", filename)
-
 	if err != nil {
 		return "", err
 	}
@@ -134,15 +183,12 @@ func transcribeAudio(file multipart.File, filename string, apiKey string) (strin
 	}
 
 	writer.WriteField("model", "whisper-1")
-
 	err = writer.Close()
-
 	if err != nil {
 		return "", err
 	}
 
 	req, err := http.NewRequest("POST", "https://api.openai.com/v1/audio/transcriptions", body)
-
 	if err != nil {
 		return "", err
 	}
@@ -152,17 +198,82 @@ func transcribeAudio(file multipart.File, filename string, apiKey string) (strin
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
-
 	if err != nil {
 		return "", err
 	}
-
 	defer resp.Body.Close()
 
 	responseBody, _ := io.ReadAll(resp.Body)
 	var responseObj OpenAIResponse
 	err = json.Unmarshal(responseBody, &responseObj)
+	if err != nil {
+		return "", err
+	}
 
+	return responseObj.Text, nil
+}
+
+func downloadAndTranscribeAudio(audioUrl string, apiKey string, tdAuthHeader string) (string, error) {
+	// Download audio from TrackDrive URL
+	req, err := http.NewRequest("GET", audioUrl, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create download request: %w", err)
+	}
+	req.Header.Set("Authorization", tdAuthHeader)
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to download audio: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("audio download failed with status: %d", resp.StatusCode)
+	}
+
+	audioBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read audio bytes: %w", err)
+	}
+
+	// Pipe into Whisper
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("file", "audio.mp3")
+	if err != nil {
+		return "", err
+	}
+
+	_, err = io.Copy(part, bytes.NewReader(audioBytes))
+	if err != nil {
+		return "", err
+	}
+
+	writer.WriteField("model", "whisper-1")
+	err = writer.Close()
+	if err != nil {
+		return "", err
+	}
+
+	whisperReq, err := http.NewRequest("POST", "https://api.openai.com/v1/audio/transcriptions", body)
+	if err != nil {
+		return "", err
+	}
+
+	whisperReq.Header.Set("Content-Type", writer.FormDataContentType())
+	whisperReq.Header.Set("Authorization", "Bearer "+apiKey)
+
+	whisperResp, err := client.Do(whisperReq)
+	if err != nil {
+		return "", err
+	}
+	defer whisperResp.Body.Close()
+
+	responseBody, _ := io.ReadAll(whisperResp.Body)
+	var responseObj OpenAIResponse
+	err = json.Unmarshal(responseBody, &responseObj)
 	if err != nil {
 		return "", err
 	}
