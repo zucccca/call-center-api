@@ -44,7 +44,7 @@ func main() {
 		MaxAge:           300,
 	}))
 
-	port := ":4000"
+	port := ":80"
 
 	r.HandleFunc("/upload", uploadHandler)
 	r.HandleFunc("/calls", getCallsHandler)
