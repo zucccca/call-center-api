@@ -221,7 +221,12 @@ func downloadAndTranscribeAudio(audioUrl string, apiKey string, tdAuthHeader str
 	}
 	req.Header.Set("Authorization", tdAuthHeader)
 
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := &http.Client{
+		Timeout: 60 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return nil
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to download audio: %w", err)
