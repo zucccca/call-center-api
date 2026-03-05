@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -27,21 +28,41 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
-	err := r.ParseMultipartForm(50 << 20)
-	if err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
-		return
+
+	var agentName, tdUrl, audioUrl string
+	var text, filename string
+	var err error
+
+	contentType := r.Header.Get("Content-Type")
+	fmt.Println("Content-Type:", contentType)
+
+	if strings.Contains(contentType, "application/json") {
+		// TrackDrive webhook flow — JSON body
+		var payload struct {
+			Audio     string `json:"audio"`
+			AgentName string `json:"agent_name"`
+			TdUrl     string `json:"td_url"`
+		}
+		if err = json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
+			return
+		}
+		audioUrl = payload.Audio
+		agentName = payload.AgentName
+		tdUrl = payload.TdUrl
+	} else {
+		// Multipart form — curl/batch script flow
+		if err = r.ParseMultipartForm(50 << 20); err != nil {
+			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			return
+		}
+		agentName = r.FormValue("agent_name")
+		tdUrl = r.FormValue("td_url")
+		audioUrl = r.FormValue("audio")
 	}
 
-	agentName := r.FormValue("agent_name")
-	tdUrl := r.FormValue("td_url")
-
-	var text string
-	var filename string
-
-	// If audio is a URL (TrackDrive webhook flow)
-	audioUrl := r.FormValue("audio")
 	if audioUrl != "" {
+		// Audio is a URL — download and transcribe
 		fmt.Printf("Received audio URL: %s\n", audioUrl)
 		tdAuthHeader := os.Getenv("TD_AUTH_HEADER")
 		if tdAuthHeader == "" {
@@ -56,7 +77,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		filename = audioUrl
 	} else {
-		// Fall back to direct file upload (batch script)
+		// Audio is a direct file upload
 		file, header, fileErr := r.FormFile("audio")
 		if fileErr != nil {
 			fmt.Printf("Error retrieving file: %v\n", fileErr)
@@ -105,12 +126,11 @@ func getCallsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse query params (default: limit=20, offset=0)
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
-	limit := 20 // default
-	offset := 0 // default
+	limit := 20
+	offset := 0
 
 	if limitStr != "" {
 		fmt.Sscanf(limitStr, "%d", &limit)
@@ -119,7 +139,6 @@ func getCallsHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Sscanf(offsetStr, "%d", &offset)
 	}
 
-	// Validate limits
 	if limit > 100 {
 		limit = 100
 	}
@@ -127,7 +146,6 @@ func getCallsHandler(w http.ResponseWriter, r *http.Request) {
 		limit = 20
 	}
 
-	// Get calls from DB
 	calls, total, err := GetCalls(limit, offset)
 	if err != nil {
 		log.Printf("Error fetching calls: %v", err)
@@ -135,7 +153,6 @@ func getCallsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build response
 	response := CallsListResponse{
 		Calls:  calls,
 		Total:  total,
@@ -162,7 +179,7 @@ func getCallByIdHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != nil { // ← Any OTHER error
+	if err != nil {
 		log.Printf("Error fetching call: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
