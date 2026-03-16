@@ -42,8 +42,8 @@ func SaveCall(callData *CallCompliance) (int, error) {
 	}
 
 	err = db.QueryRow(
-		`INSERT INTO calls(filename, transcript, flags, flag_count, is_pushy, score, agent_name, trackdrive_url) 
-		 VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		`INSERT INTO calls(filename, transcript, flags, flag_count, is_pushy, score, agent_name, trackdrive_url, disposition, offer_name, agent_talk_time, forward_duration) 
+		 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
 		callData.Filename,
 		callData.Transcript,
 		flags,
@@ -52,6 +52,10 @@ func SaveCall(callData *CallCompliance) (int, error) {
 		callData.Score,
 		callData.AgentName,
 		callData.TrackdriveUrl,
+		callData.Disposition,
+		callData.OfferName,
+		callData.AgentTalkTime,
+		callData.ForwardDuration,
 	).Scan(&callId)
 
 	if err != nil {
