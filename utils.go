@@ -67,6 +67,15 @@ type CallDetail struct {
 	ForwardDuration int       `json:"forward_duration"`
 }
 
+type CallFilters struct {
+	AgentName   string
+	Disposition string
+	SortBy      string
+	SortOrder   string
+	DateFrom    string
+	DateTo      string
+}
+
 type OpenAIResponse struct {
 	Text string `json:"text"`
 }

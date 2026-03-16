@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	_ "github.com/lib/pq"
 )
@@ -66,22 +67,75 @@ func SaveCall(callData *CallCompliance) (int, error) {
 	return callId, nil
 }
 
-func GetCalls(limit, offset int) ([]CallSummary, int, error) {
+func GetCalls(limit, offset int, filters CallFilters) ([]CallSummary, int, error) {
 
+	// Build dynamic WHERE clause
+	conditions := []string{}
+	args := []interface{}{}
+	argIndex := 1
+
+	if filters.AgentName != "" {
+		conditions = append(conditions, fmt.Sprintf("LOWER(agent_name) LIKE LOWER($%d)", argIndex))
+		args = append(args, "%"+filters.AgentName+"%")
+		argIndex++
+	}
+
+	if filters.Disposition != "" {
+		conditions = append(conditions, fmt.Sprintf("disposition = $%d", argIndex))
+		args = append(args, filters.Disposition)
+		argIndex++
+	}
+
+	if filters.DateFrom != "" {
+		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", argIndex))
+		args = append(args, filters.DateFrom)
+		argIndex++
+	}
+
+	if filters.DateTo != "" {
+		conditions = append(conditions, fmt.Sprintf("created_at <= $%d", argIndex))
+		args = append(args, filters.DateTo)
+		argIndex++
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Sorting
+	sortBy := "created_at"
+	if filters.SortBy == "score" || filters.SortBy == "flag_count" {
+		sortBy = filters.SortBy
+	}
+
+	sortOrder := "DESC"
+	if filters.SortOrder == "ASC" {
+		sortOrder = "ASC"
+	}
+
+	// Count query
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM calls %s", whereClause)
 	var total int
-	err := db.QueryRow("SELECT COUNT(*) FROM calls").Scan(&total)
+	err := db.QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
 		log.Printf("Failed counting calls, err %v", err)
 		return nil, 0, err
 	}
 
-	rows, err := db.Query(`
-		SELECT id, filename, score, flag_count, is_pushy, created_at, agent_name, trackdrive_url, disposition, offer_name
-		FROM calls 
-		ORDER BY created_at DESC 
-		LIMIT $1 OFFSET $2
-	`, limit, offset)
+	// Add limit and offset args
+	args = append(args, limit, offset)
 
+	// Main query
+	query := fmt.Sprintf(`
+		SELECT id, filename, score, flag_count, is_pushy, created_at, agent_name, trackdrive_url, disposition, offer_name
+		FROM calls
+		%s
+		ORDER BY %s %s
+		LIMIT $%d OFFSET $%d
+	`, whereClause, sortBy, sortOrder, argIndex, argIndex+1)
+
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		log.Printf("Failed fetching calls from db, err %v", err)
 		return nil, 0, err

@@ -111,6 +111,15 @@ func getCallsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filters := CallFilters{
+		AgentName:   r.URL.Query().Get("agent_name"),
+		Disposition: r.URL.Query().Get("disposition"),
+		SortBy:      r.URL.Query().Get("sort_by"),
+		SortOrder:   r.URL.Query().Get("sort_order"),
+		DateFrom:    r.URL.Query().Get("date_from"),
+		DateTo:      r.URL.Query().Get("date_to"),
+	}
+
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
@@ -131,7 +140,7 @@ func getCallsHandler(w http.ResponseWriter, r *http.Request) {
 		limit = 20
 	}
 
-	calls, total, err := GetCalls(limit, offset)
+	calls, total, err := GetCalls(limit, offset, filters)
 	if err != nil {
 		log.Printf("Error fetching calls: %v", err)
 		http.Error(w, "Failed to fetch calls", http.StatusInternalServerError)
