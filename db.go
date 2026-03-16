@@ -76,7 +76,7 @@ func GetCalls(limit, offset int) ([]CallSummary, int, error) {
 	}
 
 	rows, err := db.Query(`
-		SELECT id, filename, score, flag_count, is_pushy, created_at, agent_name, trackdrive_url
+		SELECT id, filename, score, flag_count, is_pushy, created_at, agent_name, trackdrive_url, disposition, offer_name
 		FROM calls 
 		ORDER BY created_at DESC 
 		LIMIT $1 OFFSET $2
@@ -100,6 +100,8 @@ func GetCalls(limit, offset int) ([]CallSummary, int, error) {
 			&call.CreatedAt,
 			&call.AgentName,
 			&call.TrackdriveUrl,
+			&call.Disposition,
+			&call.OfferName,
 		)
 		if err != nil {
 			log.Printf("Failed scanning row, err %v", err)
@@ -115,7 +117,7 @@ func GetCall(id int) (*CallDetail, error) {
 	var call CallDetail
 	var flagsJSON []byte
 	err := db.QueryRow(
-		`SELECT id, filename, transcript, flags, flag_count, is_pushy, score, created_at, agent_name, trackdrive_url 
+		`SELECT id, filename, transcript, flags, flag_count, is_pushy, score, created_at, agent_name, trackdrive_url, disposition, offer_name, agent_talk_time, forward_duration 
 		 FROM calls WHERE id = $1`, id,
 	).Scan(
 		&call.ID,
@@ -128,6 +130,10 @@ func GetCall(id int) (*CallDetail, error) {
 		&call.CreatedAt,
 		&call.AgentName,
 		&call.TrackdriveUrl,
+		&call.Disposition,
+		&call.OfferName,
+		&call.AgentTalkTime,
+		&call.ForwardDuration,
 	)
 
 	if err != nil {
