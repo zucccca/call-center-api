@@ -109,6 +109,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	callAnalysis.Filename = filename
 	callAnalysis.AgentName = agentName
 	callAnalysis.TrackdriveUrl = tdUrl
+	callAnalysis.Disposition = disposition
+	callAnalysis.OfferName = offerName
+	callAnalysis.AgentTalkTime = agentTalkTime
+	callAnalysis.ForwardDuration = forwardDuration
 
 	callId, err := SaveCall(callAnalysis)
 	if err != nil {
