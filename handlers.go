@@ -50,15 +50,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		audioUrl = payload.Audio
 		agentName = payload.AgentName
 		tdUrl = payload.TdUrl
-	} else {
-		// Multipart form — curl/batch script flow
-		if err = r.ParseMultipartForm(50 << 20); err != nil {
-			http.Error(w, "Failed to parse form", http.StatusBadRequest)
-			return
-		}
-		agentName = r.FormValue("agent_name")
-		tdUrl = r.FormValue("td_url")
-		audioUrl = r.FormValue("audio")
 	}
 
 	if audioUrl != "" {
