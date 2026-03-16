@@ -76,25 +76,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		filename = audioUrl
-	} else {
-		// Audio is a direct file upload
-		file, header, fileErr := r.FormFile("audio")
-		if fileErr != nil {
-			fmt.Printf("Error retrieving file: %v\n", fileErr)
-			http.Error(w, "Failed to retrieve audio", http.StatusBadRequest)
-			return
-		}
-		defer file.Close()
-		file.Seek(0, 0)
-
-		fmt.Printf("File Size: %+v\n", header.Size)
-		text, err = transcribeAudio(file, header.Filename, apiKey)
-		if err != nil {
-			fmt.Printf("Error transcribing audio: %v\n", err)
-			http.Error(w, "Failed to transcribe", http.StatusInternalServerError)
-			return
-		}
-		filename = header.Filename
 	}
 
 	fmt.Printf("Transcript: %s\n", text)
