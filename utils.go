@@ -189,51 +189,6 @@ func analyzeTranscript(transcript string, apiKey string) (*CallCompliance, error
 	return &complianceData, nil
 }
 
-func transcribeAudio(file multipart.File, filename string, apiKey string) (string, error) {
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-
-	part, err := writer.CreateFormFile("file", filename)
-	if err != nil {
-		return "", err
-	}
-
-	_, err = io.Copy(part, file)
-	if err != nil {
-		return "", err
-	}
-
-	writer.WriteField("model", "whisper-1")
-	err = writer.Close()
-	if err != nil {
-		return "", err
-	}
-
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/audio/transcriptions", body)
-	if err != nil {
-		return "", err
-	}
-
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	responseBody, _ := io.ReadAll(resp.Body)
-	var responseObj OpenAIResponse
-	err = json.Unmarshal(responseBody, &responseObj)
-	if err != nil {
-		return "", err
-	}
-
-	return responseObj.Text, nil
-}
-
 func downloadAndTranscribeAudio(audioUrl string, apiKey string, tdAuthHeader string) (string, error) {
 	// Download audio from TrackDrive URL
 	req, err := http.NewRequest("GET", audioUrl, nil)

@@ -110,7 +110,7 @@ func GetCalls(limit, offset int, filters CallFilters) ([]CallSummary, int, error
 	}
 
 	sortOrder := "DESC"
-	if filters.SortOrder == "ASC" {
+	if strings.ToUpper(filters.SortOrder) == "ASC" {
 		sortOrder = "ASC"
 	}
 
