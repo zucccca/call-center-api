@@ -128,7 +128,7 @@ func GetCalls(limit, offset int, filters CallFilters) ([]CallSummary, int, error
 
 	// Main query
 	query := fmt.Sprintf(`
-		SELECT id, filename, score, flag_count, is_pushy, created_at, agent_name, trackdrive_url, disposition, offer_name
+		SELECT id, filename, score, flag_count, is_pushy, created_at, agent_name, trackdrive_url, disposition, offer_name, agent_talk_time, forward_duration
 		FROM calls
 		%s
 		ORDER BY %s %s
@@ -156,6 +156,8 @@ func GetCalls(limit, offset int, filters CallFilters) ([]CallSummary, int, error
 			&call.TrackdriveUrl,
 			&call.Disposition,
 			&call.OfferName,
+			&call.AgentTalkTime,
+			&call.ForwardDuration,
 		)
 		if err != nil {
 			log.Printf("Failed scanning row, err %v", err)
