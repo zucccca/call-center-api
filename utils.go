@@ -247,14 +247,27 @@ func downloadAndTranscribeAudio(audioUrl string, apiKey string, tdAuthHeader str
 	whisperReq.Header.Set("Authorization", "Bearer "+apiKey)
 
 	whisperResp, err := client.Do(whisperReq)
+
 	if err != nil {
 		return "", err
 	}
+
 	defer whisperResp.Body.Close()
 
-	responseBody, _ := io.ReadAll(whisperResp.Body)
+	if whisperResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(whisperResp.Body)
+		return "", fmt.Errorf("whisper API error %d: %s", whisperResp.StatusCode, string(body))
+	}
+
+	responseBody, err := io.ReadAll(whisperResp.Body)
+
+	if err != nil {
+		return "", err
+	}
+
 	var responseObj OpenAIResponse
 	err = json.Unmarshal(responseBody, &responseObj)
+
 	if err != nil {
 		return "", err
 	}
