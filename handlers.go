@@ -40,13 +40,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(contentType, "application/json") {
 		// TrackDrive webhook flow — JSON body
 		var payload struct {
-			Audio           string `json:"audio"`
-			AgentName       string `json:"agent_name"`
-			TdUrl           string `json:"td_url"`
-			Disposition     string `json:"disposition"`
-			OfferName       string `json:"offer_name"`
-			AgentTalkTime   int    `json:"agent_talk_time"`
-			ForwardDuration int    `json:"forward_duration"`
+			Audio           string  `json:"audio"`
+			AgentName       string  `json:"agent_name"`
+			TdUrl           string  `json:"td_url"`
+			Disposition     string  `json:"disposition"`
+			OfferName       string  `json:"offer_name"`
+			AgentTalkTime   float64 `json:"agent_talk_time"`
+			ForwardDuration float64 `json:"forward_duration"`
 		}
 		if err = json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
@@ -57,8 +57,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		tdUrl = payload.TdUrl
 		disposition = payload.Disposition
 		offerName = payload.OfferName
-		agentTalkTime = payload.AgentTalkTime
-		forwardDuration = payload.ForwardDuration
+		agentTalkTime = int(payload.AgentTalkTime)
+		forwardDuration = int(payload.ForwardDuration)
 	}
 
 	if audioUrl != "" {
