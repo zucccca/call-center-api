@@ -47,6 +47,7 @@ func main() {
 	port := ":8080"
 
 	r.HandleFunc("/upload", uploadHandler)
+	r.HandleFunc("/dispositions", getDispositionsHandler)
 	r.HandleFunc("/calls", getCallsHandler)
 	r.HandleFunc("/calls/{id}", getCallByIdHandler)
 
