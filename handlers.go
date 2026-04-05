@@ -141,13 +141,18 @@ func getCallsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	dateTo := r.URL.Query().Get("date_to")
+	if dateTo != "" {
+		dateTo = dateTo + " 23:59:59"
+	}
+
 	filters := CallFilters{
 		AgentName:   r.URL.Query().Get("agent_name"),
 		Disposition: r.URL.Query().Get("disposition"),
 		SortBy:      r.URL.Query().Get("sort_by"),
 		SortOrder:   r.URL.Query().Get("sort_order"),
 		DateFrom:    r.URL.Query().Get("date_from"),
-		DateTo:      r.URL.Query().Get("date_to"),
+		DateTo:      dateTo,
 	}
 
 	limitStr := r.URL.Query().Get("limit")
@@ -162,7 +167,6 @@ func getCallsHandler(w http.ResponseWriter, r *http.Request) {
 	if offsetStr != "" {
 		fmt.Sscanf(offsetStr, "%d", &offset)
 	}
-
 	if limit > 100 {
 		limit = 100
 	}
