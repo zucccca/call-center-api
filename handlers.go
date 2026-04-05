@@ -13,6 +13,32 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+func getDispositionsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	rows, err := db.Query(`SELECT DISTINCT disposition FROM calls WHERE disposition != '' ORDER BY disposition`)
+	if err != nil {
+		log.Printf("Error fetching dispositions: %v", err)
+		http.Error(w, "Failed to fetch dispositions", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	dispositions := []string{}
+	for rows.Next() {
+		var d string
+		if err := rows.Scan(&d); err == nil {
+			dispositions = append(dispositions, d)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(dispositions)
+}
+
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Hit upload handler")
 
